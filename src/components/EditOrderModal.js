@@ -26,18 +26,6 @@ export default function UserOrdersModal({ user, onClose }) {
 
   useEffect(() => { fetchData() }, [user.id])
 
-  function orderLabel(type) {
-    if (type === 'opening_balance') return 'opening'
-    if (type === 'manual') return 'manual'
-    return null
-  }
-
-  function orderLabelHe(type) {
-    if (type === 'opening_balance') return 'יתרת פתיחה'
-    if (type === 'manual') return 'ידנית'
-    return null
-  }
-
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: 560 }}>
@@ -47,51 +35,44 @@ export default function UserOrdersModal({ user, onClose }) {
         </div>
 
         <div className="nav-tabs" style={{ marginBottom: '1rem' }}>
-          <button className={`nav-tab ${tab === 'orders' ? 'active' : ''}`} onClick={() => setTab('orders')}>
-            {`orders (${orders.length})`}
+          <button className={['nav-tab', tab === 'orders' ? 'active' : ''].join(' ')} onClick={() => setTab('orders')}>
+            Orders ({orders.length})
           </button>
-          <button className={`nav-tab ${tab === 'payments' ? 'active' : ''}`} onClick={() => setTab('payments')}>
-            {`payments (${payments.length})`}
+          <button className={['nav-tab', tab === 'payments' ? 'active' : ''].join(' ')} onClick={() => setTab('payments')}>
+            Payments ({payments.length})
           </button>
         </div>
 
         {loading ? <div className="spinner" /> : tab === 'orders' ? (
           orders.length === 0 ? (
-            <p style={{ color: 'var(--gray-500)', textAlign: 'center', padding: '2rem' }}>No orders</p>
+            <p style={{ color: 'var(--gray-500)', textAlign: 'center', padding: '2rem' }}>No orders yet</p>
           ) : (
             <div style={{ border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
               {orders.map((order, i) => (
                 <div key={order.id} style={{ borderBottom: i < orders.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 14px' }}>
-                    <div style={{ flex: 1, cursor: order.order_items?.length ? 'pointer' : 'default' }}
-                      onClick={() => order.order_items?.length && setExpanded(expanded === order.id ? null : order.id)}>
-                      <div style={{ fontSize: 14, fontWeight: 500, display: 'flex', gap: 7, alignItems: 'center' }}>
-                        {order.type === 'opening_balance' ? (order.note || 'opening balance') : 'order'}
-                        {orderLabel(order.type) && (
-                          <span className="badge badge-manual" style={{ fontSize: 11 }}>{orderLabelHe(order.type)}</span>
-                        )}
+                    <div style={{ flex: 1, cursor: order.order_items && order.order_items.length ? 'pointer' : 'default' }}
+                      onClick={() => order.order_items && order.order_items.length && setExpanded(expanded === order.id ? null : order.id)}>
+                      <div style={{ fontSize: 14, fontWeight: 500 }}>
+                        {order.type === 'opening_balance' ? (order.note || 'Opening Balance') : 'Order'}
+                        {order.type === 'opening_balance' && <span className="badge badge-manual" style={{ fontSize: 11, marginRight: 6 }}>opening</span>}
+                        {order.type === 'manual' && <span className="badge badge-manual" style={{ fontSize: 11, marginRight: 6 }}>manual</span>}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{fmtDate(order.created_at)}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 600 }}>{"₪" + fmt(order.total)}</span>
+                      <span style={{ fontWeight: 600 }}>{'NIS ' + fmt(order.total)}</span>
                       {order.type !== 'opening_balance' && (
-                        <button className="btn btn-secondary btn-sm" onClick={() => setEditOrder(order)}>edit</button>
-                      )}
-                      {order.order_items?.length > 0 && (
-                        <span style={{ color: 'var(--gray-400)', cursor: 'pointer' }}
-                          onClick={() => setExpanded(expanded === order.id ? null : order.id)}>
-                          {expanded === order.id ? '^' : 'v'}
-                        </span>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setEditOrder(order)}>Edit</button>
                       )}
                     </div>
                   </div>
-                  {expanded === order.id && order.order_items?.length > 0 && (
+                  {expanded === order.id && order.order_items && order.order_items.length > 0 && (
                     <div style={{ background: 'var(--gray-50)', borderTop: '1px solid var(--gray-100)', padding: '8px 14px 10px' }}>
                       {order.order_items.map(item => (
-                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13, color: 'var(--gray-700)' }}>
-                          <span>{item.product_name + ' x' + item.quantity}</span>
-                          <span>{"₪" + fmt(item.subtotal)}</span>
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13 }}>
+                          <span>{item.product_name} x{item.quantity}</span>
+                          <span>{'NIS ' + fmt(item.subtotal)}</span>
                         </div>
                       ))}
                     </div>
@@ -102,16 +83,16 @@ export default function UserOrdersModal({ user, onClose }) {
           )
         ) : (
           payments.length === 0 ? (
-            <p style={{ color: 'var(--gray-500)', textAlign: 'center', padding: '2rem' }}>No payments</p>
+            <p style={{ color: 'var(--gray-500)', textAlign: 'center', padding: '2rem' }}>No payments yet</p>
           ) : (
             <div style={{ border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
               {payments.map((p, i) => (
                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 14px', borderBottom: i < payments.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 500 }}>{p.note || 'payment'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{p.note || 'Payment'}</div>
                     <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{fmtDate(p.created_at)}</div>
                   </div>
-                  <span style={{ fontWeight: 600, color: 'var(--green)' }}>{"₪" + fmt(p.amount)}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--green)' }}>{'NIS ' + fmt(p.amount)}</span>
                 </div>
               ))}
             </div>
@@ -119,7 +100,7 @@ export default function UserOrdersModal({ user, onClose }) {
         )}
 
         <div style={{ marginTop: '1.25rem' }}>
-          <button className="btn btn-secondary btn-full" onClick={onClose}>close</button>
+          <button className="btn btn-secondary btn-full" onClick={onClose}>Close</button>
         </div>
       </div>
 
