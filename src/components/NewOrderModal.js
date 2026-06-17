@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 function fmt(n) { return Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 export default function NewOrderModal({ onClose, onSaved }) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [products, setProducts] = useState([])
   const [quantities, setQuantities] = useState({})
   const [note, setNote] = useState('')
@@ -54,6 +54,21 @@ export default function NewOrderModal({ onClose, onSaved }) {
       const { error: iErr } = await supabase.from('order_items').insert(orderItems)
       if (iErr) throw iErr
 
+      // Send email notification
+      try {
+        await fetch('/api/notify-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName: profile?.full_name || user.email,
+            items: orderItems,
+            total: total
+          })
+        })
+      } catch (emailErr) {
+        console.log('Email notification failed:', emailErr)
+      }
+
       setConfirmed(true)
       setTimeout(onSaved, 1500)
     } catch (e) {
@@ -67,7 +82,7 @@ export default function NewOrderModal({ onClose, onSaved }) {
       <div className="modal" style={{ textAlign: 'center', padding: '2.5rem' }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
         <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>ההזמנה נשלחה!</h3>
-        <p style={{ color: 'var(--gray-500)' }}>סה"כ ₪{fmt(total)} נוסף לחשבונך</p>
+        <p style={{ color: 'var(--gray-500)' }}>NIS {fmt(total)}</p>
       </div>
     </div>
   )
@@ -77,7 +92,7 @@ export default function NewOrderModal({ onClose, onSaved }) {
       <div className="modal">
         <div className="modal-header">
           <h3 className="modal-title">הזמנה חדשה</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>X</button>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
@@ -85,7 +100,7 @@ export default function NewOrderModal({ onClose, onSaved }) {
         {products.length === 0 ? (
           <div className="empty-state" style={{ padding: '2rem 0' }}>
             <div className="empty-icon">📦</div>
-            <p>אין מוצרים זמינים כרגע</p>
+            <p>אין מוצרים זמינים</p>
           </div>
         ) : (
           <>
@@ -97,12 +112,19 @@ export default function NewOrderModal({ onClose, onSaved }) {
                   borderBottom: i < products.length - 1 ? '1px solid var(--gray-100)' : 'none',
                   background: (quantities[p.id] || 0) > 0 ? 'var(--green-light)' : 'white'
                 }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 500 }}>{p.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>₪{fmt(p.price)} / {p.unit}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {p.image_url && (
+                      <img src={p.image_url} alt={p.name}
+                        onError={e => e.target.style.display='none'}
+                        style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 4 }} />
+                    )}
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500 }}>{p.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>NIS {fmt(p.price)} / {p.unit}</div>
+                    </div>
                   </div>
                   <div className="qty-control">
-                    <button className="qty-btn" onClick={() => setQty(p.id, (quantities[p.id] || 0) - 1)}>−</button>
+                    <button className="qty-btn" onClick={() => setQty(p.id, (quantities[p.id] || 0) - 1)}>-</button>
                     <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{quantities[p.id] || 0}</span>
                     <button className="qty-btn" onClick={() => setQty(p.id, (quantities[p.id] || 0) + 1)}>+</button>
                   </div>
@@ -119,14 +141,14 @@ export default function NewOrderModal({ onClose, onSaved }) {
               <div style={{ background: 'var(--gray-50)', borderRadius: 'var(--radius-sm)', padding: '12px', marginBottom: '1rem' }}>
                 {items.map(p => (
                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                    <span>{p.name} × {quantities[p.id]}</span>
-                    <span>₪{fmt(p.price * quantities[p.id])}</span>
+                    <span>{p.name} x{quantities[p.id]}</span>
+                    <span>NIS {fmt(p.price * quantities[p.id])}</span>
                   </div>
                 ))}
                 <hr className="divider" />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 16 }}>
-                  <span>סה"כ</span>
-                  <span>₪{fmt(total)}</span>
+                  <span>Total</span>
+                  <span>NIS {fmt(total)}</span>
                 </div>
               </div>
             )}
@@ -135,7 +157,7 @@ export default function NewOrderModal({ onClose, onSaved }) {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleOrder} disabled={loading || items.length === 0}>
-            {loading ? 'שולח...' : `שלח הזמנה${items.length > 0 ? ` — ₪${fmt(total)}` : ''}`}
+            {loading ? 'שולח...' : items.length > 0 ? 'שלח הזמנה - NIS ' + fmt(total) : 'שלח הזמנה'}
           </button>
           <button className="btn btn-secondary" onClick={onClose}>ביטול</button>
         </div>
