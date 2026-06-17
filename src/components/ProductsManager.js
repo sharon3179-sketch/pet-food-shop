@@ -9,6 +9,7 @@ function ProductModal({ product, onClose, onSaved }) {
   const [unit, setUnit] = useState(product?.unit || 'שק')
   const [stock, setStock] = useState(product?.stock ?? '')
   const [description, setDescription] = useState(product?.description || '')
+  const [imageUrl, setImageUrl] = useState(product?.image_url || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -21,9 +22,10 @@ function ProductModal({ product, onClose, onSaved }) {
     const payload = {
       name: name.trim(),
       price: parseFloat(price),
-      unit: unit.trim() || 'יח׳',
+      unit: unit.trim() || 'יח',
       stock: parseInt(stock) || 0,
       description: description.trim() || null,
+      image_url: imageUrl.trim() || null,
       updated_at: new Date().toISOString()
     }
 
@@ -44,32 +46,44 @@ function ProductModal({ product, onClose, onSaved }) {
       <div className="modal">
         <div className="modal-header">
           <h3 className="modal-title">{product?.id ? 'עריכת מוצר' : 'מוצר חדש'}</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>X</button>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
 
         <div className="form-group">
           <label className="form-label">שם המוצר *</label>
-          <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder='למשל: רויאל קנין חתולים 10 ק"ג' />
+          <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="שם המוצר" />
         </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="form-group">
-            <label className="form-label">מחיר (₪) *</label>
+            <label className="form-label">מחיר (שח) *</label>
             <input className="form-input" type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
           </div>
           <div className="form-group">
             <label className="form-label">יחידה</label>
-            <input className="form-input" value={unit} onChange={e => setUnit(e.target.value)} placeholder='שק, יח׳, אריזה...' />
+            <input className="form-input" value={unit} onChange={e => setUnit(e.target.value)} placeholder="שק, יח, אריזה" />
           </div>
         </div>
+
         <div className="form-group">
           <label className="form-label">כמות במלאי</label>
           <input className="form-input" type="number" min="0" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" />
         </div>
+
+        <div className="form-group">
+          <label className="form-label">קישור לתמונה (URL)</label>
+          <input className="form-input" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
+          {imageUrl && (
+            <img src={imageUrl} alt="preview" onError={e => e.target.style.display='none'}
+              style={{ width: '100%', height: 120, objectFit: 'contain', marginTop: 8, borderRadius: 6, border: '1px solid var(--gray-200)' }} />
+          )}
+        </div>
+
         <div className="form-group">
           <label className="form-label">תיאור (אופציונלי)</label>
-          <input className="form-input" value={description} onChange={e => setDescription(e.target.value)} placeholder="פרטים נוספים על המוצר" />
+          <input className="form-input" value={description} onChange={e => setDescription(e.target.value)} placeholder="פרטים נוספים" />
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
@@ -88,6 +102,7 @@ export default function ProductsManager() {
   const [loading, setLoading] = useState(true)
   const [editProduct, setEditProduct] = useState(null)
   const [showNew, setShowNew] = useState(false)
+  const [search, setSearch] = useState('')
 
   async function fetchProducts() {
     setLoading(true)
@@ -103,6 +118,11 @@ export default function ProductsManager() {
     fetchProducts()
   }
 
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
+  )
+
   return (
     <div>
       <div className="section-header">
@@ -110,66 +130,57 @@ export default function ProductsManager() {
         <button className="btn btn-primary" onClick={() => setShowNew(true)}>+ מוצר חדש</button>
       </div>
 
-      {loading ? <div className="spinner" /> : products.length === 0 ? (
+      <div style={{ marginBottom: '1rem' }}>
+        <input
+          className="form-input"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="חיפוש מוצר..."
+          style={{ maxWidth: 300 }}
+        />
+      </div>
+
+      {loading ? <div className="spinner" /> : filtered.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📦</div>
-          <p>אין מוצרים עדיין. לחצי על "+ מוצר חדש" להתחיל.</p>
+          <p>{search ? 'לא נמצאו מוצרים' : 'אין מוצרים עדיין'}</p>
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>שם</th>
-                  <th>מחיר</th>
-                  <th>יחידה</th>
-                  <th>מלאי</th>
-                  <th>סטטוס</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map(p => (
-                  <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
-                    <td style={{ fontWeight: 500 }}>{p.name}</td>
-                    <td>₪{fmt(p.price)}</td>
-                    <td>{p.unit}</td>
-                    <td>{p.stock}</td>
-                    <td>
-                      <span className={`badge ${p.active ? 'badge-paid' : 'badge-manual'}`}>
-                        {p.active ? 'פעיל' : 'מושבת'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setEditProduct(p)}>עריכה</button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => toggleActive(p)}>
-                          {p.active ? 'השבת' : 'הפעל'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+          {filtered.map(p => (
+            <div key={p.id} className="card" style={{ padding: 0, overflow: 'hidden', opacity: p.active ? 1 : 0.5 }}>
+              {p.image_url ? (
+                <img src={p.image_url} alt={p.name}
+                  onError={e => { e.target.style.display='none' }}
+                  style={{ width: '100%', height: 140, objectFit: 'contain', background: 'var(--gray-50)', padding: 8 }} />
+              ) : (
+                <div style={{ width: '100%', height: 140, background: 'var(--gray-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
+                  📦
+                </div>
+              )}
+              <div style={{ padding: '10px 12px' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{p.name}</div>
+                <div style={{ fontSize: 13, color: 'var(--gray-500)', marginBottom: 6 }}>
+                  NIS {fmt(p.price)} / {p.unit} &nbsp;|&nbsp; {p.stock} במלאי
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setEditProduct(p)}>עריכה</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => toggleActive(p)}>
+                    {p.active ? 'השבת' : 'הפעל'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {showNew && (
-        <ProductModal
-          onClose={() => setShowNew(false)}
-          onSaved={() => { setShowNew(false); fetchProducts() }}
-        />
+        <ProductModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); fetchProducts() }} />
       )}
 
       {editProduct && (
-        <ProductModal
-          product={editProduct}
-          onClose={() => setEditProduct(null)}
-          onSaved={() => { setEditProduct(null); fetchProducts() }}
-        />
+        <ProductModal product={editProduct} onClose={() => setEditProduct(null)} onSaved={() => { setEditProduct(null); fetchProducts() }} />
       )}
     </div>
   )
