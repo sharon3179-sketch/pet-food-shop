@@ -5,7 +5,7 @@ import EditOrderModal from './EditOrderModal'
 function fmt(n) { return Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 function fmtDate(d) { return new Date(d).toLocaleDateString('he-IL') }
 
-export default function UserOrdersModal({ user, onClose }) {
+export default function UserOrdersModal({ user, onClose, onSaved }) {
   const [orders, setOrders] = useState([])
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -14,6 +14,7 @@ export default function UserOrdersModal({ user, onClose }) {
   const [editOrder, setEditOrder] = useState(null)
 
   const fetchData = () => {
+    setLoading(true)
     Promise.all([
       supabase.from('orders').select('*, order_items(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
@@ -25,6 +26,13 @@ export default function UserOrdersModal({ user, onClose }) {
   }
 
   useEffect(() => { fetchData() }, [user.id])
+
+  async function deletePayment(paymentId) {
+    if (!window.confirm('למחוק את התשלום? הסכום יוסר מהחשבון.')) return
+    await supabase.from('payments').delete().eq('id', paymentId)
+    fetchData()
+    if (onSaved) onSaved()
+  }
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -92,7 +100,10 @@ export default function UserOrdersModal({ user, onClose }) {
                     <div style={{ fontSize: 14, fontWeight: 500 }}>{p.note || 'Payment'}</div>
                     <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{fmtDate(p.created_at)}</div>
                   </div>
-                  <span style={{ fontWeight: 600, color: 'var(--green)' }}>NIS {fmt(p.amount)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 600, color: 'var(--green)' }}>NIS {fmt(p.amount)}</span>
+                    <button className="btn btn-danger btn-sm" onClick={() => deletePayment(p.id)}>מחק</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -109,7 +120,7 @@ export default function UserOrdersModal({ user, onClose }) {
           order={editOrder}
           userId={user.id}
           onClose={() => setEditOrder(null)}
-          onSaved={() => { setEditOrder(null); fetchData() }}
+          onSaved={() => { setEditOrder(null); fetchData(); if (onSaved) onSaved() }}
         />
       )}
     </div>
