@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
 import AddOrderModal from '../components/AddOrderModal'
 import AddPaymentModal from '../components/AddPaymentModal'
 import ProductsManager from '../components/ProductsManager'
@@ -10,7 +9,6 @@ function fmt(n) { return Number(n || 0).toLocaleString('he-IL', { minimumFractio
 function initials(name) { return name?.split(' ').map(w => w[0]).slice(0, 2).join('') || '?' }
 
 export default function AdminDashboard() {
-  const { profile } = useAuth()
   const [tab, setTab] = useState('friends')
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -48,7 +46,7 @@ export default function AdminDashboard() {
         </div>
         <div className="metric-card">
           <div className="metric-label">סה"כ חובות פתוחים</div>
-          <div className={`metric-value ${totalDebt > 0 ? 'red' : 'green'}`}>₪{fmt(totalDebt)}</div>
+          <div className={`metric-value ${totalDebt > 0 ? 'red' : 'green'}`}>NIS {fmt(totalDebt)}</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">חברים עם חוב</div>
@@ -100,13 +98,13 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           </td>
-                          <td>₪{fmt(u.total_charged)}</td>
-                          <td>₪{fmt(u.total_paid)}</td>
+                          <td>NIS {fmt(u.total_charged)}</td>
+                          <td>NIS {fmt(u.total_paid)}</td>
                           <td>
                             {balance > 0.009 ? (
-                              <span className="badge badge-debt">₪{fmt(balance)} חוב</span>
+                              <span className="badge badge-debt">NIS {fmt(balance)} חוב</span>
                             ) : balance < -0.009 ? (
-                              <span className="badge badge-paid">זיכוי ₪{fmt(Math.abs(balance))}</span>
+                              <span className="badge badge-paid">זיכוי NIS {fmt(Math.abs(balance))}</span>
                             ) : (
                               <span className="badge badge-paid">מסולק</span>
                             )}
@@ -153,6 +151,7 @@ export default function AdminDashboard() {
         <UserOrdersModal
           user={viewOrdersUser}
           onClose={() => setViewOrdersUser(null)}
+          onSaved={() => fetchUsers()}
         />
       )}
     </div>
