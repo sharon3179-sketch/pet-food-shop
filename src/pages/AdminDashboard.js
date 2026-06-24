@@ -4,6 +4,7 @@ import AddOrderModal from '../components/AddOrderModal'
 import AddPaymentModal from '../components/AddPaymentModal'
 import ProductsManager from '../components/ProductsManager'
 import UserOrdersModal from '../components/UserOrdersModal'
+import AddUserModal from '../components/AddUserModal'
 
 function fmt(n) { return Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 function initials(name) { return name?.split(' ').map(w => w[0]).slice(0, 2).join('') || '?' }
@@ -15,6 +16,7 @@ export default function AdminDashboard() {
   const [addOrderUser, setAddOrderUser] = useState(null)
   const [addPaymentUser, setAddPaymentUser] = useState(null)
   const [viewOrdersUser, setViewOrdersUser] = useState(null)
+  const [showAddUser, setShowAddUser] = useState(false)
   const [totalDebt, setTotalDebt] = useState(0)
 
   const fetchUsers = useCallback(async () => {
@@ -63,6 +65,7 @@ export default function AdminDashboard() {
         <div>
           <div className="section-header">
             <h2 className="section-title">חברים וחובות</h2>
+            <button className="btn btn-primary" onClick={() => setShowAddUser(true)}>+ הוסף חברה</button>
           </div>
 
           {loading ? <div className="spinner" /> : users.length === 0 ? (
@@ -130,6 +133,13 @@ export default function AdminDashboard() {
       )}
 
       {tab === 'products' && <ProductsManager />}
+
+      {showAddUser && (
+        <AddUserModal
+          onClose={() => setShowAddUser(false)}
+          onSaved={() => { setShowAddUser(false); fetchUsers() }}
+        />
+      )}
 
       {addOrderUser && (
         <AddOrderModal
