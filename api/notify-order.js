@@ -1,1 +1,34 @@
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
 
+  const { customerName, items, total } = req.body
+
+  const itemsList = items.map(i => i.product_name + ' x' + i.quantity + ' = NIS ' + Number(i.subtotal).toFixed(2)).join('\n')
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'onboarding@resend.dev',
+        to: 'sharon3179@gmail.com',
+        subject: 'הזמנה חדשה מ ' + customerName,
+        text: 'הזמנה חדשה התקבלה!\n\nלקוח: ' + customerName + '\n\nפריטים:\n' + itemsList + '\n\nסהכ: NIS ' + Number(total).toFixed(2)
+      })
+    })
+
+    if (!response.ok) {
+      const err = await response.json()
+      return res.status(500).json({ error: err })
+    }
+
+    return res.status(200).json({ success: true })
+  } catch (e) {
+    return res.status(500).json({ error: e.message })
+  }
+}
